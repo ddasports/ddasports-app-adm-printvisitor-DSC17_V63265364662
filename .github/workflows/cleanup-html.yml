@@ -1,9 +1,9 @@
-name: Cleanup Old HTML Files
+name: Cleanup HTML Files Daily
 
 on:
   schedule:
-    # Runs every 2 days at midnight UTC
-    - cron: "0 0 */2 * *"
+    # Runs daily at midnight UTC
+    - cron: "0 0 * * *"
   workflow_dispatch: # optional manual trigger
 
 permissions:
@@ -16,40 +16,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history (optional here, but good practice)
 
-      - name: Find and delete old HTML files
+      - name: Delete all HTML files except exclusions
         run: |
-          echo "Finding HTML files older than 2 days..."
-
-          # Exclude these files
+          # Files to keep
           EXCLUDE=("place_holder.html" "index.html" "old/index.html")
 
-          # Current date in seconds
-          NOW=$(date +%s)
+          # Find all .html files recursively
+          find . -type f -name "*.html" | while read file; do
+            BASENAME=$(basename "$file")
 
-          # Loop through all .html files
-          for file in *.html old/*.html; do
-            # Skip if file is in exclude list
-            if [[ " ${EXCLUDE[@]} " =~ " $(basename $file) " ]]; then
+            # Skip excluded files
+            if [[ " ${EXCLUDE[@]} " =~ " ${BASENAME} " ]]; then
               continue
             fi
 
-            # Get last commit date for the file in seconds since epoch
-            FILEDATE=$(git log -1 --format="%ct" -- "$file")
-            AGE=$(( NOW - FILEDATE ))
-
-            echo $file $AGE
-
-            # 2 days in seconds = 172800
-            # if [ $AGE -ge 172800 ]; then
-            if [ $AGE -ge 2 ]; then
-              echo "Deleting $file (older than 2 days)"
-              git rm "$file"
-            fi
+            echo "Deleting $file"
+            git rm "$file"
           done
 
           # Commit deletions if any
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git commit -m "chore: cleanup old HTML files" || echo "No files to delete"
+          git commit -m "chore: delete all HTML files except exclusions" || echo "No files to delete"
           git push

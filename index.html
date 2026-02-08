@@ -1,61 +1,195 @@
-<script>
-const TOKEN = "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";
-const OWNER = "ddasports";
-const REPO  = "ddasports-app-adm-printvisitor-DSC17_V63265364662";
-const PAGES_BASE_URL = "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Receipt Generator</title>
 
-async function submitForm(e) {
-  e.preventDefault();
-
-  let name = document.getElementById("name").value.toUpperCase();
-  const datetime = new Date().toLocaleString();
-
-  document.getElementById("status").innerText = "⏳ Triggering workflow...";
-
-  await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
-    {
-      method: "POST",
-      headers: {
-        "Accept": "application/vnd.github+json",
-        "Authorization": `Bearer ${TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        event_type: "web_trigger",
-        client_payload: { name, datetime }
-      })
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-  );
 
-  document.getElementById("status").innerText = "⚙️ Generating receipt...";
-  pollWorkflow(name);
-}
+    .card {
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 8px;
+      width: 380px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
 
-function pollWorkflow(name) {
-  const interval = setInterval(async () => {
-    const res = await fetch(
-      `https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=5`,
-      {
-        headers: {
-          "Authorization": `Bearer ${TOKEN}`
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #24292e;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .meta {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    a {
+      color: #0969da;
+      font-weight: bold;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Visitor Receipt</h2>
+
+    <div class="meta" id="datetime"></div>
+
+    <form onsubmit="submitForm(event)">
+      <label for="name">Name</label>
+      <input
+        type="text"
+        id="name"
+        placeholder="Enter name"
+        required
+        oninput="this.value = this.value.toUpperCase()"
+      />
+
+      <button id="submitBtn" type="submit">
+        Generate Receipt
+      </button>
+    </form>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const TOKEN = "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";
+    const OWNER = "ddasports";
+    const REPO  = "ddasports-app-adm-printvisitor-DSC17_V63265364662";
+    const PAGES_BASE_URL =
+      "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
+
+    // Show current date & time (IST)
+    function updateDateTime() {
+      const now = new Date();
+      const options = {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      };
+      document.getElementById("datetime").innerText =
+        "Current Time: " + now.toLocaleString("en-IN", options);
+    }
+
+    updateDateTime();
+    setInterval(updateDateTime, 60000);
+
+    async function submitForm(e) {
+      e.preventDefault();
+
+      const nameInput = document.getElementById("name");
+      const submitBtn = document.getElementById("submitBtn");
+      const statusDiv = document.getElementById("status");
+
+      const name = nameInput.value.trim().toUpperCase();
+      if (!name) return;
+
+      submitBtn.disabled = true;
+      statusDiv.innerText = "⏳ Triggering workflow...";
+
+      await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            "Accept": "application/vnd.github+json",
+            "Authorization": `Bearer ${TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            event_type: "web_trigger",
+            client_payload: { name }
+          })
         }
-      }
-    );
+      );
 
-    const data = await res.json();
-    const run = data.workflow_runs.find(r => r.event === "repository_dispatch");
-
-    if (run && run.status === "completed") {
-      clearInterval(interval);
-
-      const link = `${PAGES_BASE_URL}/${name}.html`;
-
-      document.getElementById("status").innerHTML = `
-        ✅ Receipt generated! <br><br>
-        👉 <a href="${link}" target="_blank">${name}.html</a>
-      `;
+      statusDiv.innerText = "⚙️ Generating receipt, please wait...";
+      pollWorkflow(name);
     }
-  }, 5000);
-}
-</script>
+
+    function pollWorkflow(name) {
+      const statusDiv = document.getElementById("status");
+
+      const interval = setInterval(async () => {
+        const res = await fetch(
+          `https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=5`,
+          {
+            headers: {
+              "Authorization": `Bearer ${TOKEN}`
+            }
+          }
+        );
+
+        const data = await res.json();
+        const run = data.workflow_runs.find(
+          r => r.event === "repository_dispatch"
+        );
+
+        if (run && run.status === "completed") {
+          clearInterval(interval);
+
+          const link = `${PAGES_BASE_URL}/${name}.html`;
+
+          statusDiv.innerHTML = `
+            ✅ Receipt generated successfully!<br><br>
+            👉 <a href="${link}" target="_blank">${name}.html</a>
+          `;
+        }
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

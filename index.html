@@ -121,10 +121,9 @@ function pollWorkflow(name, triggerTime) {
 
       if (data.completed) {
         clearInterval(interval);
-        document.getElementById("spinner").style.display = "none";
-        document.getElementById("status").innerText = "✅ Receipt generated. Preparing link… (wait 40s)";
+        // Keep spinner running during the 40s halt
+        document.getElementById("status").innerText = "✅ Receipt generated… finalizing…";
 
-        // 40-second halt before showing link
         setTimeout(() => {
           const link = `${PAGES_BASE_URL}/${name}.html`;
           document.getElementById("status").innerHTML = `
@@ -132,7 +131,7 @@ function pollWorkflow(name, triggerTime) {
             👉 <a href="${link}" target="_blank">${name}.html</a>
           `;
           document.getElementById("retriggerBtn").style.display = "block";
-        }, 40000);
+        }, 40000); // 40-second silent halt
       }
     } catch(err) {
       console.error("Polling error", err);

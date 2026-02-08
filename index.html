@@ -120,18 +120,21 @@ function pollWorkflow(name, triggerTime) {
       const data = await res.json();
 
       if (data.completed) {
-        clearInterval(interval);
-        // Keep spinner running during the 40s halt
+        clearInterval(interval); // stop polling
+
+        // Keep spinner running during 40s halt
         document.getElementById("status").innerText = "✅ Receipt generated… finalizing…";
 
+        // 40-second silent halt
         setTimeout(() => {
           const link = `${PAGES_BASE_URL}/${name}.html`;
+          document.getElementById("spinner").style.display = "none"; // stop spinner here
           document.getElementById("status").innerHTML = `
             ✅ Receipt ready<br>
             👉 <a href="${link}" target="_blank">${name}.html</a>
           `;
           document.getElementById("retriggerBtn").style.display = "block";
-        }, 40000); // 40-second silent halt
+        }, 40000);
       }
     } catch(err) {
       console.error("Polling error", err);

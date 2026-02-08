@@ -20,15 +20,17 @@
       border-radius: 8px;
       width: 380px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
     }
 
     h2 {
-      text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     label {
       font-weight: bold;
+      display: block;
+      text-align: left;
     }
 
     input {
@@ -48,6 +50,11 @@
       border-radius: 5px;
       font-size: 15px;
       cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button.secondary {
+      background: #0969da;
     }
 
     button:disabled {
@@ -59,19 +66,33 @@
       font-size: 13px;
       color: #555;
       margin-bottom: 15px;
-      text-align: center;
     }
 
     #status {
       margin-top: 15px;
       font-size: 14px;
-      text-align: center;
     }
 
     a {
       color: #0969da;
       font-weight: bold;
       text-decoration: none;
+    }
+
+    /* Spinner */
+    .spinner {
+      margin: 15px auto;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #ddd;
+      border-top: 4px solid #24292e;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -82,7 +103,7 @@
 
     <div class="meta" id="datetime"></div>
 
-    <form onsubmit="submitForm(event)">
+    <form id="receiptForm" onsubmit="submitForm(event)">
       <label for="name">Name</label>
       <input
         type="text"
@@ -97,18 +118,29 @@
       </button>
     </form>
 
+    <div class="spinner" id="spinner"></div>
+
     <div id="status"></div>
+
+    <button
+      id="retriggerBtn"
+      class="secondary"
+      style="display:none"
+      onclick="resetForm()"
+    >
+      Generate Another Receipt
+    </button>
   </div>
 
   <script>
-    // ===== CONFIG =====
+    /* ===== CONFIG ===== */
     const TOKEN = "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";
     const OWNER = "ddasports";
     const REPO  = "ddasports-app-adm-printvisitor-DSC17_V63265364662";
     const PAGES_BASE_URL =
       "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
 
-    // Show current date & time (IST)
+    /* Show current IST time */
     function updateDateTime() {
       const now = new Date();
       const options = {
@@ -130,15 +162,12 @@
     async function submitForm(e) {
       e.preventDefault();
 
-      const nameInput = document.getElementById("name");
-      const submitBtn = document.getElementById("submitBtn");
-      const statusDiv = document.getElementById("status");
-
-      const name = nameInput.value.trim().toUpperCase();
+      const name = document.getElementById("name").value.trim().toUpperCase();
       if (!name) return;
 
-      submitBtn.disabled = true;
-      statusDiv.innerText = "⏳ Triggering workflow...";
+      document.getElementById("submitBtn").disabled = true;
+      document.getElementById("spinner").style.display = "block";
+      document.getElementById("status").innerText = "⏳ Triggering workflow...";
 
       await fetch(
         `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
@@ -156,13 +185,12 @@
         }
       );
 
-      statusDiv.innerText = "⚙️ Generating receipt, please wait...";
+      document.getElementById("status").innerText =
+        "⚙️ Generating receipt, please wait...";
       pollWorkflow(name);
     }
 
     function pollWorkflow(name) {
-      const statusDiv = document.getElementById("status");
-
       const interval = setInterval(async () => {
         const res = await fetch(
           `https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=5`,
@@ -181,14 +209,26 @@
         if (run && run.status === "completed") {
           clearInterval(interval);
 
-          const link = `${PAGES_BASE_URL}/${name}.html`;
+          document.getElementById("spinner").style.display = "none";
 
-          statusDiv.innerHTML = `
+          const link = `${PAGES_BASE_URL}/${name}.html`;
+          document.getElementById("status").innerHTML = `
             ✅ Receipt generated successfully!<br><br>
             👉 <a href="${link}" target="_blank">${name}.html</a>
           `;
+
+          document.getElementById("retriggerBtn").style.display = "block";
         }
       }, 5000);
+    }
+
+    function resetForm() {
+      document.getElementById("receiptForm").reset();
+      document.getElementById("status").innerText = "";
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("submitBtn").disabled = false;
+      document.getElementById("retriggerBtn").style.display = "none";
+      document.getElementById("name").focus();
     }
   </script>
 </body>

@@ -34,11 +34,9 @@ jobs:
               continue
             fi
 
-            # Get file modification time in seconds
-            FILETIME=$(date -r "$file" +%s)
-
-            # Calculate age in seconds
-            AGE=$(( NOW - FILETIME ))
+            # Get last commit date for the file in seconds since epoch
+            FILEDATE=$(git log -1 --format="%ct" -- "$file")
+            AGE=$(( NOW - FILEDATE ))
 
             echo $file $AGE
 

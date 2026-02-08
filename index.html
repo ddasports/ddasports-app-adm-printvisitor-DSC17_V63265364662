@@ -123,12 +123,21 @@ function pollWorkflow(name, triggerTime) {
         clearInterval(interval); // stop polling
 
         // Keep spinner running during 40s halt
-        document.getElementById("status").innerText = "✅ Receipt generated… finalizing…";
+        let waitTime = 40; // total 40 seconds
+        document.getElementById("status").innerText = `✅ Receipt generated… finalizing…`;
 
-        // 40-second silent halt
+        const countdown = setInterval(() => {
+          waitTime--;
+          if (waitTime <= 10 && waitTime > 0) {
+            document.getElementById("status").innerText = `✅ Receipt generated… finalizing… ⏳ ${waitTime}s remaining`;
+          }
+        }, 1000);
+
+        // After 40s, show the link
         setTimeout(() => {
+          clearInterval(countdown); // stop countdown
           const link = `${PAGES_BASE_URL}/${name}.html`;
-          document.getElementById("spinner").style.display = "none"; // stop spinner here
+          document.getElementById("spinner").style.display = "none"; // stop spinner
           document.getElementById("status").innerHTML = `
             ✅ Receipt ready<br>
             👉 <a href="${link}" target="_blank">${name}.html</a>

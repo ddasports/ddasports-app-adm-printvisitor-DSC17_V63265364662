@@ -1,80 +1,109 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Receipt Trigger Form</title>
+  <title>Receipt Form</title>
 </head>
 <body>
 
-  <h2>Visitor Receipt Form</h2>
+<h2>Visitor Receipt Form</h2>
 
-  <form onsubmit="submitForm(event)">
-    <label>
-      Name:
-      <input type="text" id="name" required />
-    </label>
+<form onsubmit="submitForm(event)">
+  <label>
+    Name:
+    <input type="text" id="name" required />
+  </label>
 
-    <p>
-      Date & Time:
-      <span id="datetime"></span>
-    </p>
+  <p>
+    Date & Time:
+    <span id="datetime"></span>
+  </p>
 
-    <button type="submit">Submit</button>
-  </form>
+  <button type="submit">Submit</button>
+</form>
 
-  <script>
-    // Display current date & time
-    function updateDateTime() {
-      const now = new Date();
-      document.getElementById("datetime").innerText =
-        now.toLocaleString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        });
+<p id="status"></p>
+
+<script>
+const TOKEN = "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"; // temporary
+const OWNER = "ddasports";
+const REPO  = "ddasports-app-adm-printvisitor-DSC17_V56425376765";
+const WORKFLOW_NAME = "Receipt Workflow";
+
+function updateDateTime() {
+  const now = new Date();
+  document.getElementById("datetime").innerText =
+    now.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+}
+updateDateTime();
+
+async function submitForm(e) {
+  e.preventDefault();
+
+  let name = document.getElementById("name").value.toUpperCase(); // ✅ uppercase
+  const datetime = document.getElementById("datetime").innerText;
+
+  document.getElementById("status").innerText = "⏳ Triggering workflow...";
+
+  // 1️⃣ Trigger workflow
+  const triggerRes = await fetch(
+    `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "Authorization": `Bearer ${TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        event_type: "web_trigger",
+        client_payload: { name, datetime }
+      })
     }
+  );
 
-    updateDateTime();
+  if (triggerRes.status !== 204) {
+    document.getElementById("status").innerText = "❌ Failed to trigger workflow";
+    return;
+  }
 
-    async function submitForm(e) {
-      e.preventDefault();
+  document.getElementById("status").innerText = "⚙️ Workflow running...";
 
-      const name = document.getElementById("name").value;
-      const datetime = document.getElementById("datetime").innerText;
+  // 2️⃣ Poll until workflow completes
+  pollWorkflowCompletion();
+}
 
-      const TOKEN = "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"; // ⚠️ temporary
-      const OWNER = "ddasports";
-      const REPO  = "ddasports-app-adm-printvisitor-DSC17_V63265364662";
-
-      const response = await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            "Accept": "application/vnd.github+json",
-            "Authorization": `Bearer ${TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            event_type: "web_trigger",
-            client_payload: {
-              name: name,
-              datetime: datetime
-            }
-          })
+async function pollWorkflowCompletion() {
+  const interval = setInterval(async () => {
+    const res = await fetch(
+      `https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=5`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${TOKEN}`
         }
-      );
-
-      if (response.status === 204) {
-        // Redirect after successful trigger
-        window.location.href = "1.html";
-      } else {
-        alert("Failed to trigger workflow ❌");
       }
+    );
+
+    const data = await res.json();
+
+    const run = data.workflow_runs.find(
+      r => r.event === "repository_dispatch"
+    );
+
+    if (run && run.status === "completed") {
+      clearInterval(interval);
+      document.getElementById("status").innerText = "✅ Workflow completed!";
+      window.location.href = "result.html";
     }
-  </script>
+  }, 5000); // poll every 5 seconds
+}
+</script>
 
 </body>
 </html>

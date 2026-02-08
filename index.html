@@ -99,7 +99,7 @@ async function pollWorkflowCompletion() {
     if (run && run.status === "completed") {
       clearInterval(interval);
       document.getElementById("status").innerText = "✅ Workflow completed!";
-      window.location.href = "result.html";
+      window.location.href = "1.html";
     }
   }, 5000); // poll every 5 seconds
 }

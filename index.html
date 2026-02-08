@@ -49,11 +49,10 @@
     input {
       width: 100%;
       padding: 12px;
-      font-size: 16px; /* prevents iOS zoom */
+      font-size: 16px;
       margin-bottom: 14px;
       border-radius: 6px;
       border: 1px solid #ccc;
-      box-sizing: border-box;
     }
 
     button {
@@ -97,7 +96,6 @@
       word-break: break-word;
     }
 
-    /* Spinner */
     .spinner {
       margin: 16px auto;
       width: 42px;
@@ -112,34 +110,18 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-
-    /* Extra small phones */
-    @media (max-width: 360px) {
-      h2 { font-size: 18px; }
-      .note { font-size: 11px; }
-    }
   </style>
 </head>
 
 <body>
   <div class="card">
     <h2>Visitor Receipt</h2>
-
     <div class="meta" id="datetime"></div>
 
-    <form id="receiptForm" onsubmit="submitForm(event)">
-      <label for="name">Name</label>
-      <input
-        type="text"
-        id="name"
-        placeholder="Enter name"
-        required
-        oninput="this.value = this.value.toUpperCase()"
-      />
-
-      <button id="submitBtn" type="submit">
-        Generate Receipt
-      </button>
+    <form onsubmit="submitForm(event)">
+      <label>Name</label>
+      <input id="name" required oninput="this.value=this.value.toUpperCase()" />
+      <button id="submitBtn">Generate Receipt</button>
     </form>
 
     <div class="note">
@@ -148,111 +130,76 @@
     </div>
 
     <div class="spinner" id="spinner"></div>
-
     <div id="status"></div>
 
-    <button
-      id="retriggerBtn"
-      class="secondary"
-      style="display:none"
-      onclick="resetForm()"
-    >
+    <button id="retriggerBtn" class="secondary" onclick="resetForm()" style="display:none">
       Generate Another Receipt
     </button>
   </div>
 
-  <script>
-    const TOKEN = "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";
-    const OWNER = "ddasports";
-    const REPO  = "ddasports-app-adm-printvisitor-DSC17_V63265364662";
-    const PAGES_BASE_URL =
-      "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
+<script>
+const WORKER_URL = "https://github-dispatch-proxy.paritoshthakur3655.workers.dev";
+const PAGES_BASE = "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
 
-    function updateDateTime() {
-      const now = new Date();
-      const options = {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
-      };
-      document.getElementById("datetime").innerText =
-        "Current Time: " + now.toLocaleString("en-IN", options);
-    }
+function updateDateTime() {
+  document.getElementById("datetime").innerText =
+    "Current Time: " + new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
+}
+updateDateTime();
+setInterval(updateDateTime, 60000);
 
-    updateDateTime();
-    setInterval(updateDateTime, 60000);
+async function submitForm(e) {
+  e.preventDefault();
+  const name = document.getElementById("name").value.trim().toUpperCase();
+  if (!name) return;
 
-    async function submitForm(e) {
-      e.preventDefault();
+  document.getElementById("submitBtn").disabled = true;
+  document.getElementById("spinner").style.display = "block";
+  document.getElementById("status").innerText = "⏳ Generating receipt…";
 
-      const name = document.getElementById("name").value.trim().toUpperCase();
-      if (!name) return;
+  await fetch(`${WORKER_URL}/trigger`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
 
-      document.getElementById("submitBtn").disabled = true;
-      document.getElementById("spinner").style.display = "block";
-      document.getElementById("status").innerText = "⏳ Generating receipt…";
+  pollStatus(name);
+}
 
-      await fetch(
-        `https://api.github.com/repos/${OWNER}/${REPO}/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            "Accept": "application/vnd.github+json",
-            "Authorization": `Bearer ${TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            event_type: "web_trigger",
-            client_payload: { name }
-          })
-        }
-      );
+function pollStatus(name) {
+  const interval = setInterval(async () => {
+    const res = await fetch(`${WORKER_URL}/status?name=${name}`);
+    const data = await res.json();
 
-      pollWorkflow(name);
-    }
-
-    function pollWorkflow(name) {
-      const interval = setInterval(async () => {
-        const res = await fetch(
-          `https://api.github.com/repos/${OWNER}/${REPO}/actions/runs?per_page=5`,
-          {
-            headers: { "Authorization": `Bearer ${TOKEN}` }
-          }
-        );
-
-        const data = await res.json();
-        const run = data.workflow_runs.find(
-          r => r.event === "repository_dispatch"
-        );
-
-        if (run && run.status === "completed") {
-          clearInterval(interval);
-
-          document.getElementById("spinner").style.display = "none";
-
-          const link = `${PAGES_BASE_URL}/${name}.html`;
-          document.getElementById("status").innerHTML = `
-            ✅ Receipt generated<br>
-            👉 <a href="${link}" target="_blank">${name}.html</a>
-          `;
-
-          document.getElementById("retriggerBtn").style.display = "block";
-        }
-      }, 5000);
-    }
-
-    function resetForm() {
-      document.getElementById("receiptForm").reset();
-      document.getElementById("status").innerText = "";
+    if (data.completed) {
+      clearInterval(interval);
       document.getElementById("spinner").style.display = "none";
-      document.getElementById("submitBtn").disabled = false;
-      document.getElementById("retriggerBtn").style.display = "none";
-      document.getElementById("name").focus();
+
+      document.getElementById("status").innerHTML = `
+        ✅ Receipt generated<br>
+        👉 <a href="${PAGES_BASE}/${name}.html" target="_blank">${name}.html</a>
+      `;
+
+      document.getElementById("retriggerBtn").style.display = "block";
     }
-  </script>
+  }, 5000);
+}
+
+function resetForm() {
+  document.querySelector("form").reset();
+  document.getElementById("status").innerText = "";
+  document.getElementById("spinner").style.display = "none";
+  document.getElementById("submitBtn").disabled = false;
+  document.getElementById("retriggerBtn").style.display = "none";
+}
+</script>
 </body>
 </html>

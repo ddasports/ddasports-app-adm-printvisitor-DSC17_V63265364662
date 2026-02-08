@@ -4,9 +4,10 @@ on:
   repository_dispatch:
     types: [web_trigger]
   workflow_dispatch:
+
 permissions:
   contents: write
-  
+
 jobs:
   generate-html:
     runs-on: ubuntu-latest
@@ -15,26 +16,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate 1.html from template
+      - name: Generate receipt HTML
         run: |
-          # Date formats
+          # Dates
           DATE_READABLE=$(date +"%d %b %Y")
           CURRENT_TIME=$(TZ="Asia/Kolkata" date +"%I:%M %p")
-          CURRENT_NAME=${{ github.event.client_payload.name }}
-          echo "DATE_READABLE=$DATE_READABLE" >> $GITHUB_ENV
-          echo "CURRENT_TIME=$CURRENT_TIME" >> $GITHUB_ENV
+
+          # Name from payload (already uppercase from frontend, but double-safety)
+          RAW_NAME="${{ github.event.client_payload.name }}"
+          NAME=$(echo "$RAW_NAME" | tr '[:lower:]' '[:upper:]')
+
+          FILE_NAME="${NAME}.html"
+
+          echo "Creating receipt: $FILE_NAME"
+
           DATE_URL_ENCODED=$(date +"%d%%20%b%%20%Y")
-          # Recreate 1.html from template
-          cp place_holder.html 1.html
+
+          # Create file from template
+          cp place_holder.html "$FILE_NAME"
+
           # Replace placeholders
-          sed -i "s/DATE_PLACEHOLDER_SPACE/$DATE_URL_ENCODED/g" 1.html
-          sed -i "s/DATE_PLACEHOLDER/$DATE_READABLE/g" 1.html
-          sed -i "s/TIME/${CURRENT_TIME}/g" 1.html
-          sed -i "s/NAME/${CURRENT_NAME}/g" 1.html
-      - name: Commit updated 1.html
+          sed -i "s/DATE_PLACEHOLDER_SPACE/$DATE_URL_ENCODED/g" "$FILE_NAME"
+          sed -i "s/DATE_PLACEHOLDER/$DATE_READABLE/g" "$FILE_NAME"
+          sed -i "s/TIME/$CURRENT_TIME/g" "$FILE_NAME"
+          sed -i "s/NAME/$NAME/g" "$FILE_NAME"
+
+      - name: Commit generated receipt
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add 1.html
-          git commit -m "chore: update receipt date to $DATE_READABLE" || exit 0
+
+          git add *.html
+          git commit -m "chore: generate receipt for $NAME" || exit 0
           git push

@@ -119,8 +119,14 @@
     <div class="meta" id="datetime"></div>
 
     <form onsubmit="submitForm(event)">
-      <label>Name</label>
-      <input id="name" required oninput="this.value=this.value.toUpperCase()" />
+      <label for="name">Name</label>
+      <input
+        id="name"
+        type="text"
+        placeholder="Enter name"
+        required
+        oninput="this.value = this.value.toUpperCase()"
+      />
       <button id="submitBtn">Generate Receipt</button>
     </form>
 
@@ -132,21 +138,27 @@
     <div class="spinner" id="spinner"></div>
     <div id="status"></div>
 
-    <button id="retriggerBtn" class="secondary" onclick="resetForm()" style="display:none">
+    <button
+      id="retriggerBtn"
+      class="secondary"
+      onclick="resetForm()"
+      style="display:none"
+    >
       Generate Another Receipt
     </button>
   </div>
 
 <script>
-/* 🔗 CONFIG */
-const WORKER_URL = "https://github-dispatch-proxy.paritoshthakur3655.workers.dev";
+/* ================= CONFIG ================= */
+const WORKER_URL = "https://github-dispatch-proxy.paritoshthakur3655.workers.dev/";
 const PAGES_BASE_URL =
   "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
 
-/* 🕒 Date/Time */
+/* ================= DATE / TIME ================= */
 function updateDateTime() {
   document.getElementById("datetime").innerText =
-    "Current Time: " + new Date().toLocaleString("en-IN", {
+    "Current Time: " +
+    new Date().toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
       day: "2-digit",
       month: "short",
@@ -159,7 +171,7 @@ function updateDateTime() {
 updateDateTime();
 setInterval(updateDateTime, 60000);
 
-/* 🚀 Submit */
+/* ================= SUBMIT ================= */
 async function submitForm(e) {
   e.preventDefault();
 
@@ -179,11 +191,13 @@ async function submitForm(e) {
   pollWorkflow(name);
 }
 
-/* 🔁 Polling (RE-ADDED) */
+/* ================= POLLING ================= */
 function pollWorkflow(name) {
   const interval = setInterval(async () => {
     try {
-      const res = await fetch(`${WORKER_URL}/status?name=${encodeURIComponent(name)}`);
+      const res = await fetch(
+        `${WORKER_URL}/status?name=${encodeURIComponent(name)}`
+      );
       const data = await res.json();
 
       if (data.completed) {
@@ -199,19 +213,20 @@ function pollWorkflow(name) {
 
         document.getElementById("retriggerBtn").style.display = "block";
       }
-    } catch (e) {
-      console.error("Polling failed", e);
+    } catch (err) {
+      console.error("Polling error", err);
     }
   }, 5000);
 }
 
-/* 🔄 Reset */
+/* ================= RESET ================= */
 function resetForm() {
   document.querySelector("form").reset();
   document.getElementById("status").innerText = "";
   document.getElementById("spinner").style.display = "none";
   document.getElementById("submitBtn").disabled = false;
   document.getElementById("retriggerBtn").style.display = "none";
+  document.getElementById("name").focus();
 }
 </script>
 </body>

@@ -138,9 +138,12 @@
   </div>
 
 <script>
+/* 🔗 CONFIG */
 const WORKER_URL = "https://github-dispatch-proxy.paritoshthakur3655.workers.dev";
-const PAGES_BASE = "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
+const PAGES_BASE_URL =
+  "https://ddasports.github.io/ddasports-app-adm-printvisitor-DSC17_V63265364662";
 
+/* 🕒 Date/Time */
 function updateDateTime() {
   document.getElementById("datetime").innerText =
     "Current Time: " + new Date().toLocaleString("en-IN", {
@@ -156,8 +159,10 @@ function updateDateTime() {
 updateDateTime();
 setInterval(updateDateTime, 60000);
 
+/* 🚀 Submit */
 async function submitForm(e) {
   e.preventDefault();
+
   const name = document.getElementById("name").value.trim().toUpperCase();
   if (!name) return;
 
@@ -171,28 +176,36 @@ async function submitForm(e) {
     body: JSON.stringify({ name })
   });
 
-  pollStatus(name);
+  pollWorkflow(name);
 }
 
-function pollStatus(name) {
+/* 🔁 Polling (RE-ADDED) */
+function pollWorkflow(name) {
   const interval = setInterval(async () => {
-    const res = await fetch(`${WORKER_URL}/status?name=${name}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`${WORKER_URL}/status?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
 
-    if (data.completed) {
-      clearInterval(interval);
-      document.getElementById("spinner").style.display = "none";
+      if (data.completed) {
+        clearInterval(interval);
 
-      document.getElementById("status").innerHTML = `
-        ✅ Receipt generated<br>
-        👉 <a href="${PAGES_BASE}/${name}.html" target="_blank">${name}.html</a>
-      `;
+        document.getElementById("spinner").style.display = "none";
 
-      document.getElementById("retriggerBtn").style.display = "block";
+        const link = `${PAGES_BASE_URL}/${name}.html`;
+        document.getElementById("status").innerHTML = `
+          ✅ Receipt generated<br>
+          👉 <a href="${link}" target="_blank">${name}.html</a>
+        `;
+
+        document.getElementById("retriggerBtn").style.display = "block";
+      }
+    } catch (e) {
+      console.error("Polling failed", e);
     }
   }, 5000);
 }
 
+/* 🔄 Reset */
 function resetForm() {
   document.querySelector("form").reset();
   document.getElementById("status").innerText = "";

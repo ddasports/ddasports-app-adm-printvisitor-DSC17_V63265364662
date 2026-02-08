@@ -1,0 +1,54 @@
+name: Cleanup Old HTML Files
+
+on:
+  schedule:
+    # Runs every 2 days at midnight UTC
+    - cron: "0 0 */2 * *"
+  workflow_dispatch: # optional manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and delete old HTML files
+        run: |
+          echo "Finding HTML files older than 2 days..."
+
+          # Exclude these files
+          EXCLUDE=("place_holder.html" "index.html" "old/index.html")
+
+          # Current date in seconds
+          NOW=$(date +%s)
+
+          # Loop through all .html files
+          for file in *.html old/*.html; do
+            # Skip if file is in exclude list
+            if [[ " ${EXCLUDE[@]} " =~ " $(basename $file) " ]]; then
+              continue
+            fi
+
+            # Get file modification time in seconds
+            FILETIME=$(date -r "$file" +%s)
+
+            # Calculate age in seconds
+            AGE=$(( NOW - FILETIME ))
+
+            # 2 days in seconds = 172800
+            if [ $AGE -ge 172800 ]; then
+              echo "Deleting $file (older than 2 days)"
+              git rm "$file"
+            fi
+          done
+
+          # Commit deletions if any
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git commit -m "chore: cleanup old HTML files" || echo "No files to delete"
+          git push

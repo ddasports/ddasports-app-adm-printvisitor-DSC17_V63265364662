@@ -41,7 +41,8 @@ jobs:
             AGE=$(( NOW - FILETIME ))
 
             # 2 days in seconds = 172800
-            if [ $AGE -ge 172800 ]; then
+            # if [ $AGE -ge 172800 ]; then
+            if [ $AGE -ge 2 ]; then
               echo "Deleting $file (older than 2 days)"
               git rm "$file"
             fi

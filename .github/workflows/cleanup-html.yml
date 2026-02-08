@@ -40,6 +40,8 @@ jobs:
             # Calculate age in seconds
             AGE=$(( NOW - FILETIME ))
 
+            echo $file $AGE
+
             # 2 days in seconds = 172800
             # if [ $AGE -ge 172800 ]; then
             if [ $AGE -ge 2 ]; then
